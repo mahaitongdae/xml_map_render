@@ -37,7 +37,7 @@ size =  15000            # 15000
 # name = ['roundabout.png', 'junction.png', 'south_east_gate.png','ramp.png']
 realx = [5400.0, 4900.0]
 realy = [9100.0, 8200.0]
-scale = [800.0, 1300.0]
+scale = [200.0, 400.0]
 name = ['partA.png','partC.png']
 load = ['Tsinghua Map-Part A.net.xml','Tsinghua Map-Part C.net.xml']
 # WIDTH_FACTOR = 2.1 * 180.0 / scale * float(size) / 800.0
@@ -75,50 +75,38 @@ def render_map(size, real_x, real_y, scale, name,load):
     glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST)
     #直线法绘制道路
 
-    # for i in range(len(sub_element_edge)):
-    #     if sub_element_edge[i].getAttribute('type') != 'internal':
-    #         sub_element_lane = sub_element_edge[i].getElementsByTagName("lane")
-    #         for j in range(len(sub_element_lane)):
-    #             shape = sub_element_lane[j].getAttribute("shape")
-    #             type = str(sub_element_lane[j].getAttribute("allow"))
-    #             shape_list = shape.split(" ")
-    #             try:
-    #                 width = float(sub_element_lane[j].getAttribute("width"))
-    #             except:
-    #                 # print(sub_element_lane[j].getAttribute("width"))
-    #                 width = 3.5
-    #
-    #             glLineWidth(width * WIDTH_FACTOR)
-    #             if type == 'pedestrian':
-    #                 glColor3f(0.663, 0.663, 0.663)
-    #             elif type == 'bicycle':
-    #                 glColor3f(0.455, 0.721, 0.926)
-    #             else:
-    #                 glColor3f(0.0,0.0,0.0)
-    #             glBegin(GL_LINE_STRIP)
-    #             for k in range(len(shape_list)):
-    #                 shape_point = shape_list[k].split(",")
-    #                 glVertex2f((float(shape_point[0]) / scale) * 1, (float(shape_point[1]) / scale) * 1)
-    #             glEnd()
+    def bit_pattern(*args):
+        args = list(args[:16])
+        args = args + [0] * (16 - len(args))
+        base = 0
+        for arg in args:
+            base = base << 1
+            base += bool(arg)
+        return base
+
     for i in range(len(sub_element_edge)):
-        if sub_element_edge[i].getAttribute('function') != 'internal':
-            sub_element_lane = sub_element_edge[i].getElementsByTagName("lane")  # 提取单车道数据
+        if sub_element_edge[i].getAttribute('function') == '':
+            sub_element_lane = sub_element_edge[i].getElementsByTagName("lane")
+            # if sub_element_edge[i].getAttribute('id') in ['1i', '1o', '3i', '3o']:
+            #     vertical = True
+            # else:
+            #     vertical = False
             for j in range(len(sub_element_lane)):
-                shape = sub_element_lane[j].getAttribute("shape")  # 提取形状数据
+                shape = sub_element_lane[j].getAttribute("shape")
                 type = str(sub_element_lane[j].getAttribute("allow"))
+                type_2 = str(sub_element_lane[j].getAttribute("disallow"))
                 try:
                     width = float(sub_element_lane[j].getAttribute("width"))
                 except:
-                    # print(sub_element_lane[j].getAttribute("width"))
                     width = 3.5
                 shape_list = shape.split(" ")
                 for k in range(len(shape_list) - 1):
                     shape_point_1 = shape_list[k].split(",")
                     shape_point_2 = shape_list[k + 1].split(",")
-                    shape_point_1[0] = float(shape_point_1[0]) # / scale
-                    shape_point_1[1] = float(shape_point_1[1]) # / scale
-                    shape_point_2[0] = float(shape_point_2[0]) # / scale
-                    shape_point_2[1] = float(shape_point_2[1]) # / scale
+                    shape_point_1[0] = float(shape_point_1[0])
+                    shape_point_1[1] = float(shape_point_1[1])
+                    shape_point_2[0] = float(shape_point_2[0])
+                    shape_point_2[1] = float(shape_point_2[1])
                     # 道路顶点生成
                     dx1 = shape_point_2[0] - shape_point_1[0]
                     dy1 = shape_point_2[1] - shape_point_1[1]
@@ -126,36 +114,88 @@ def render_map(size, real_x, real_y, scale, name,load):
                     absdx = abs(shape_point_1[0] - shape_point_2[0])
                     absdy = abs(shape_point_1[1] - shape_point_2[1])
                     if math.sqrt(absdx * absdx + absdy * absdy) > 0:
-                        v3 = v1 / math.sqrt(absdx * absdx + absdy * absdy) * width * 0.45
-                        # print(v3)
-                        [x1, y1] = ([shape_point_1[0], shape_point_1[1]] +  v3) / scale
-                        [x2, y2] = ([shape_point_1[0], shape_point_1[1]] -  v3) / scale
-                        [x4, y4] = ([shape_point_2[0], shape_point_2[1]] +  v3) / scale
-                        [x3, y3] = ([shape_point_2[0], shape_point_2[1]] -  v3) / scale # 0.0176 * v3
-                        # print(x1,y1)
+                        v3 = v1 / math.sqrt(absdx * absdx + absdy * absdy) * width * 0.5
+                        [x1, y1] = ([shape_point_1[0], shape_point_1[1]] + v3) / scale
+                        [x2, y2] = ([shape_point_1[0], shape_point_1[1]] - v3) / scale
+                        [x4, y4] = ([shape_point_2[0], shape_point_2[1]] + v3) / scale
+                        [x3, y3] = ([shape_point_2[0], shape_point_2[1]] - v3) / scale  # 0.0176 * v3
                         glBegin(GL_POLYGON)  # 开始绘制单车道
                         if type == 'pedestrian':
-                            glColor3f(0.663, 0.663, 0.663)
+                            glColor3f(0.616, 0.616, 0.616)
                         elif type == 'bicycle':
-                            glColor3f(0.455, 0.721, 0.926)
+                            glColor3f(0.188, 0.188, 0.188)
+                        elif type_2 == 'all':
+                            glColor3f(0.1333, 0.545, 0.1333)
                         else:
-                            glColor3f(0.0,0.0,0.0)
+                            glColor3f(0.188, 0.188, 0.188)
+
                         glVertex2f(x1, y1)
                         glVertex2f(x2, y2)
                         glVertex2f(x3, y3)
                         glVertex2f(x4, y4)
-                        glEnd()  # 结束绘制线段
+                        glEnd()
+
+                        if type == '' and type_2 != 'all':
+                            glLineWidth(1.0)
+                            glLineStipple(3, bit_pattern(
+                                0, 0, 0, 0,
+                                0, 0, 0, 0,
+                                1, 1, 1, 1,
+                                1, 1, 1, 1,
+                            ))
+                            glEnable(GL_LINE_STIPPLE)
+                            glBegin(GL_LINES)
+                            glColor3f(1.0, 1.0, 1.0)
+                            glVertex2f(x2, y2)
+                            glVertex2f(x3, y3)
+                            if j != sub_element_lane.length - 1:
+                                glVertex2f(x1, y1)
+                                glVertex2f(x4, y4)
+                            glEnd()
+                            glDisable(GL_LINE_STIPPLE)
+                            glLineWidth(10.0)
+                            glBegin(GL_LINES)
+                            glColor3f(1.0, 1.0, 1.0)
+                            glVertex2f(x3, y3)
+                            glVertex2f(x4, y4)
+                            glEnd()
+                            if j == sub_element_lane.length - 1:
+                                glLineWidth(4.0)
+                                glBegin(GL_LINES)
+                                glColor3f(0.0, 0.341, 1.0)
+                                # glVertex2f(x2, y2)
+                                # glVertex2f(x3, y3)
+                                glVertex2f(x1-0.001, y1-0.001)
+                                glVertex2f(x4-0.001, y4-0.001)
+                                glVertex2f(x1 + 0.001, y1 + 0.001)
+                                glVertex2f(x4 + 0.001, y4 + 0.001)
+                                glEnd()
+                            # if not vertical:
+                            if j == 0:
+                                glLineWidth(2.0)
+                                glBegin(GL_LINES)
+                                glColor3f(0.8275, 0.8275, 0.8275)
+                                # glVertex2f(x1, y1)
+                                # glVertex2f(x4, y4)
+                                glVertex2f(x2, y2)
+                                glVertex2f(x3, y3)
+                                glEnd()
+                        # # if vertical:
+                        #     if j == 2:
+                        #         glVertex2f(x2, y2)
+                        #         glVertex2f(x3, y3)
+
 
     for i in range(len(sub_element_junction)):
         shape = sub_element_junction[i].getAttribute("shape")
         shape_list = shape.split(" ")
 
-        glLineWidth(10) #TODO:line width 是否会对scale那里产生影响，考虑调成1重新生成
+        glLineWidth(1)
         glBegin(GL_POLYGON)
-        glColor3f(0.0,0.0,0.0)
+        glColor3f(0.188, 0.188, 0.188)
         for k in range(len(shape_list)):
             shape_point = shape_list[k].split(",")
-            if shape_point[0] != '' :
+            if shape_point[0] != '':
                 glVertex2f((float(shape_point[0]) / scale) * 1, (float(shape_point[1]) / scale) * 1)
         glEnd()
 
